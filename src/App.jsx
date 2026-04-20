@@ -191,6 +191,7 @@ const navItems = [
 function App() {
   useEffect(() => {
     const sections = document.querySelectorAll('[data-reveal]')
+    const anchorLinks = document.querySelectorAll('a[href^="#"]')
 
     const observer = new IntersectionObserver(
       (entries) => {
@@ -206,7 +207,94 @@ function App() {
 
     sections.forEach((section) => observer.observe(section))
 
-    return () => observer.disconnect()
+    let targetScroll = window.scrollY
+    let currentScroll = window.scrollY
+    let animationFrameId = 0
+    let isAnimatingAnchor = false
+
+    const clampScroll = (value) => {
+      const maxScroll = Math.max(0, document.documentElement.scrollHeight - window.innerHeight)
+      return Math.min(Math.max(value, 0), maxScroll)
+    }
+
+    const animateScroll = () => {
+      currentScroll += (targetScroll - currentScroll) * 0.1
+
+      if (Math.abs(targetScroll - currentScroll) < 0.1) {
+        currentScroll = targetScroll
+        animationFrameId = 0
+        isAnimatingAnchor = false
+        window.scrollTo(0, currentScroll)
+        return
+      }
+
+      window.scrollTo(0, currentScroll)
+      animationFrameId = window.requestAnimationFrame(animateScroll)
+    }
+
+    const startAnimation = () => {
+      if (!animationFrameId) {
+        animationFrameId = window.requestAnimationFrame(animateScroll)
+      }
+    }
+
+    const handleWheel = (event) => {
+      if (event.ctrlKey) {
+        return
+      }
+
+      event.preventDefault()
+      isAnimatingAnchor = false
+      targetScroll = clampScroll(targetScroll + event.deltaY * 0.9)
+      startAnimation()
+    }
+
+    const handleScrollSync = () => {
+      if (animationFrameId || isAnimatingAnchor) {
+        return
+      }
+
+      targetScroll = window.scrollY
+      currentScroll = window.scrollY
+    }
+
+    const handleAnchorClick = (event) => {
+      const href = event.currentTarget.getAttribute('href')
+
+      if (!href || href === '#') {
+        return
+      }
+
+      const target = document.querySelector(href)
+
+      if (!target) {
+        return
+      }
+
+      event.preventDefault()
+
+      const headerOffset = 104
+      const targetTop = target.getBoundingClientRect().top + targetScroll - headerOffset
+
+      window.history.pushState(null, '', href)
+      isAnimatingAnchor = true
+      targetScroll = clampScroll(targetTop)
+      startAnimation()
+    }
+
+    window.addEventListener('wheel', handleWheel, { passive: false })
+    window.addEventListener('scroll', handleScrollSync, { passive: true })
+    anchorLinks.forEach((link) => link.addEventListener('click', handleAnchorClick))
+
+    return () => {
+      observer.disconnect()
+      if (animationFrameId) {
+        window.cancelAnimationFrame(animationFrameId)
+      }
+      window.removeEventListener('wheel', handleWheel)
+      window.removeEventListener('scroll', handleScrollSync)
+      anchorLinks.forEach((link) => link.removeEventListener('click', handleAnchorClick))
+    }
   }, [])
 
   return (
@@ -337,17 +425,17 @@ function App() {
                       </div>
                     </div>
 
-                    <div className="grid gap-4 xl:grid-cols-2">
-                      <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 xl:min-h-[150px]">
-                        <p className="break-words text-xl leading-tight text-white sm:text-2xl">+ acolhimento</p>
-                        <p className="mt-3 max-w-[24ch] text-sm leading-6 text-white/60">
-                          Linguagem sensível para quem ainda tem dúvidas sobre começar a terapia.
+                    <div className="grid gap-4">
+                      <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 xl:min-h-[130px]">
+                        <p className="text-xl leading-tight text-white sm:text-2xl">+ acolhimento</p>
+                        <p className="mt-3 text-sm leading-6 text-white/60">
+                          Linguagem sensível para começar com segurança.
                         </p>
                       </div>
-                      <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 xl:min-h-[150px]">
-                        <p className="break-words text-xl leading-tight text-white sm:text-2xl">+ confiança</p>
-                        <p className="mt-3 max-w-[24ch] text-sm leading-6 text-white/60">
-                          Estrutura profissional para um processo terapêutico seguro e individualizado.
+                      <div className="rounded-[24px] border border-white/10 bg-white/[0.04] p-5 xl:min-h-[130px]">
+                        <p className="text-xl leading-tight text-white sm:text-2xl">+ confiança</p>
+                        <p className="mt-3 text-sm leading-6 text-white/60">
+                          Cuidado profissional, seguro e individualizado.
                         </p>
                       </div>
                     </div>
